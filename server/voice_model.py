@@ -1,12 +1,25 @@
 import whisper
+from loguru import logger
+import time
 
+
+model = None
 
 def load_whisper(model_name="base"):
+    global model
     model = whisper.load_model(model_name)
+    logger.info("load_whisper triggered")
+
+
+def get_whisper():
+    global model
+    logger.info("get_whisper triggered")
     return model
 
 
 def predict_whisper(model, audio_file):
+    start = time.time()
+
     audio = whisper.load_audio(audio_file)
     audio = whisper.pad_or_trim(audio)
 
@@ -19,6 +32,8 @@ def predict_whisper(model, audio_file):
     # decode the audio
     options = whisper.DecodingOptions()
     result = whisper.decode(model, mel, options)
+
+    logger.info(f"Time taken: {time.time() - start}")
 
     # print the recognized text
     return language, result.text
