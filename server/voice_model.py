@@ -3,17 +3,9 @@ from loguru import logger
 import time
 
 
-model = None
-
 def load_whisper(model_name="base"):
-    global model
     model = whisper.load_model(model_name)
     logger.info("load_whisper triggered")
-
-
-def get_whisper():
-    global model
-    logger.info("get_whisper triggered")
     return model
 
 

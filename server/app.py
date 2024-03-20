@@ -3,19 +3,19 @@ from contextlib import asynccontextmanager
 import uvicorn
 from loguru import logger
 
-from predict_route import predict_router
-from voice_model import load_whisper
+from router.predict_route import predict_router, get_whisper
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    load_whisper("tiny")
+    get_whisper("tiny")
     logger.info("Model loaded on startup")
     yield
 
 app = FastAPI(lifespan=lifespan)
 
 app.include_router(predict_router, tags=["Predict"], prefix="/predict")
+
 
 @app.get("/")
 async def root():

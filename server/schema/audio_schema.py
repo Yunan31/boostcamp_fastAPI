@@ -1,0 +1,1 @@
+# audio 파일 input/output을 위한 schema를 정의
