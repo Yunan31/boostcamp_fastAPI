@@ -13,9 +13,9 @@ FILE_DIR = r'./data'
 model = None
 
 
-def get_whisper(model_name="base"):
+def get_whisper():
     global model
-    model = load_whisper(model_name)
+    model = load_whisper()
 
 
 @predict_router.post("")
