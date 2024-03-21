@@ -1,36 +1,41 @@
 import whisper
 from loguru import logger
 import time
-import torch
 from dotenv import load_dotenv
 import os
+from transformers import WhisperForConditionalGeneration, WhisperProcessor, pipeline
 
 load_dotenv()
 
 
-def load_whisper():
-    model = whisper.load_model(os.getenv("MODEL_NAME"))
-    logger.info("load_whisper triggered")
-    return model
+def load_whisper_pipeline():
+    processer = WhisperProcessor.from_pretrained(os.getenv("MODEL_NAME"))
+    model = WhisperForConditionalGeneration.from_pretrained(os.getenv("MODEL_NAME"))
+
+    asr_pipe = pipeline(
+        "automatic-speech-recognition",
+        model=model,
+        feature_extractor=processer.feature_extractor,
+        tokenizer=processer.tokenizer,
+        chunk_length_s=30,
+        device=os.getenv("DEVICE"),
+    )
+
+    logger.info("load_whisper_pipeline triggered")
+    
+    return asr_pipe
 
 
-def predict_whisper(model, audio_file):
+def predict_whisper(pipe, audio_file):
     start = time.time()
 
     audio = whisper.load_audio(audio_file)
-    audio = whisper.pad_or_trim(audio)
+    prediction = pipe(audio.copy(), batch_size=8, return_timestamps=True, generate_kwargs={"language": "korean", "task": "transcribe"})["chunks"]
 
-    mel = whisper.log_mel_spectrogram(audio).to(os.getenv("DEVICE"))
-
-    # detect the spoken language
-    _, probs = model.detect_language(mel)
-    language = max(probs, key=probs.get)
-
-    # decode the audio
-    options = whisper.DecodingOptions()
-    result = whisper.decode(model, mel, options)
-
+    result = ""
+    for pred in prediction:
+        result += pred["text"] + " "
     logger.info(f"Time taken: {time.time() - start}")
 
     # print the recognized text
-    return language, result.text
+    return result

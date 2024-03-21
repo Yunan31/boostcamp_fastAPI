@@ -4,18 +4,18 @@ from loguru import logger
 
 sys.path.append(r'../')
 
-from server.voice_model import load_whisper, predict_whisper
+from server.voice_model import load_whisper_pipeline, predict_whisper
 
 predict_router = APIRouter()
 
 FILE_DIR = r'./data'
 
-model = None
+stt_pipeline = None
 
 
-def get_whisper():
-    global model
-    model = load_whisper()
+def get_whisper_pipeline():
+    global stt_pipeline
+    stt_pipeline = load_whisper_pipeline()
 
 
 @predict_router.post("")
@@ -25,7 +25,7 @@ async def predict(upload_file: UploadFile):
     with open(audio_file, "wb") as file:
         file.write(content)
 
-    language, text = predict_whisper(model, audio_file)
+    text = predict_whisper(stt_pipeline, audio_file)
 
     # print the recognized text
-    return {language, text}
+    return {text}

@@ -5,15 +5,15 @@ from loguru import logger
 from dotenv import load_dotenv
 import os
 
-from router.predict_route import predict_router, get_whisper
+from router.predict_route import predict_router, get_whisper_pipeline
 
 load_dotenv()
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    get_whisper()
-    logger.info("Model loaded on startup")
+    get_whisper_pipeline()
+    logger.info("Pipeline loaded on startup")
     yield
 
 app = FastAPI(lifespan=lifespan)
@@ -27,4 +27,4 @@ async def root():
 
 
 if __name__ == "__main__":
-    uvicorn.run(app, host='0.0.0.0', port=os.getenv("PORT"))
+    uvicorn.run(app, host='0.0.0.0', port=int(os.getenv("PORT")))
