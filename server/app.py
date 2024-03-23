@@ -5,7 +5,7 @@ from loguru import logger
 from dotenv import load_dotenv
 import os
 
-from router.predict_route import predict_router, get_whisper_pipeline
+from router.predict_route import predict_router, get_whisper_pipeline, get_classifiers
 
 load_dotenv()
 
@@ -13,6 +13,7 @@ load_dotenv()
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     get_whisper_pipeline()
+    get_classifiers()
     logger.info("Pipeline loaded on startup")
     yield
 

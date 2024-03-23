@@ -6,17 +6,24 @@ from models.metadata import Metadata
 sys.path.append(r'../')
 
 from server.voice_model import load_whisper_pipeline, predict_whisper
+from server.classification_model import load_classifiers
 
 predict_router = APIRouter()
 
 FILE_DIR = r'./data'
 
 stt_pipeline = None
+models = None
+tokenizer = None
 
 
 def get_whisper_pipeline():
     global stt_pipeline
     stt_pipeline = load_whisper_pipeline()
+
+def get_classifiers():
+    global models, tokenizer
+    models, tokenizer = load_classifiers()
 
 
 @predict_router.post("")

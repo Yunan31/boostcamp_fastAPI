@@ -7,7 +7,7 @@ from torch import nn
 
 from transformers import AutoTokenizer
 from transformers.modeling_outputs import SequenceClassifierOutput
-from transformers import ElectraModel, ElectraConfig
+from transformers import ElectraModel, ElectraConfig, ElectraForPreTraining, PreTrainedModel
 from transformers.models.electra.modeling_electra import ElectraPreTrainedModel
 from datasets import Dataset
 
@@ -34,6 +34,26 @@ def load_classifier():
         )
     model.eval()
     return model, tokenizer
+
+def load_classifiers():
+    model_config = ast.literal_eval(os.getenv("CLASSIFIER_MODELS_CONFIG"))
+    print(model_config['model_path'])
+    models = []
+    for model_path in model_config['model_path']:
+        # tokenizer
+        tokenizer = AutoTokenizer.from_pretrained(model_path)
+        # model setting
+        config = ElectraConfig.from_pretrained(model_path)
+        model = CustomModel.from_pretrained(
+            model_path,
+            num_labels=2,
+            addi_feat_size=model_config['addi_feat_size'],
+            config = config,
+            tokenizer = tokenizer
+            )
+        model.eval()
+        models.append(model)
+    return models, tokenizer
     
 
 def preprocessing_special_token(tokenizer, text, age, gender, q_num, max_len=512):
@@ -82,18 +102,18 @@ class TextDataset(Dataset):
         }
 
 
-class CustomModel(ElectraPreTrainedModel) :
+class CustomModel(PreTrainedModel) :
     def __init__(self, config, num_labels, addi_feat_size, tokenizer) :
         super().__init__(config=config)
-        self.backbone = ElectraModel(config=config) # ??
-        self.backbone.resize_token_embeddings(len(tokenizer))
+        self.backbone = ElectraForPreTraining(config=config) # ??
+        # self.backbone.resize_token_embeddings(len(tokenizer))
         self.num_labels = num_labels
         self.dropout = nn.Dropout(0.5)
         self.classifier = nn.Linear((768 + addi_feat_size), self.num_labels)        
 
     def forward(self, input_ids, attention_mask, addi_feat, labels=None) :
-        backbone_output = self.backbone(input_ids=input_ids, attention_mask=attention_mask)
-        x = self.dropout(backbone_output["last_hidden_state"][:,0,:])
+        backbone_output = self.backbone(input_ids=input_ids, attention_mask=attention_mask, output_hidden_states=True, output_attentions=True)
+        x = self.dropout(backbone_output["hidden_states"][-1][:,0,:])
         x = self.concat_features(x, addi_feat)
         x = self.classifier(x)
         logits = torch.nn.functional.softmax(x, dim=1)
