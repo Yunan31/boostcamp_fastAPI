@@ -21,7 +21,7 @@ def load_whisper_pipeline():
         device=os.getenv("DEVICE"),
     )
 
-    logger.info("load_whisper_pipeline triggered")
+    logger.info("load_whisper_pipeline complete")
     
     return asr_pipe
 

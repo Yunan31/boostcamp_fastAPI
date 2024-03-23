@@ -6,7 +6,8 @@ from models.metadata import Metadata
 sys.path.append(r'../')
 
 from server.voice_model import load_whisper_pipeline, predict_whisper
-from server.classification_model import load_classifiers
+from server.classification_model import load_classifiers, predict_classification
+from server.extract_feature import load_opensmile, extract_feature
 
 predict_router = APIRouter()
 
@@ -15,6 +16,7 @@ FILE_DIR = r'./data'
 stt_pipeline = None
 models = None
 tokenizer = None
+smile = None
 
 
 def get_whisper_pipeline():
@@ -24,6 +26,10 @@ def get_whisper_pipeline():
 def get_classifiers():
     global models, tokenizer
     models, tokenizer = load_classifiers()
+
+def get_opensmile():
+    global smile
+    smile = load_opensmile()
 
 
 @predict_router.post("")

@@ -10,6 +10,7 @@ from transformers.modeling_outputs import SequenceClassifierOutput
 from transformers import ElectraModel, ElectraConfig, ElectraForPreTraining, PreTrainedModel
 from transformers.models.electra.modeling_electra import ElectraPreTrainedModel
 from datasets import Dataset
+from loguru import logger
 
 from dotenv import load_dotenv
 import ast
@@ -37,7 +38,7 @@ def load_classifier():
 
 def load_classifiers():
     model_config = ast.literal_eval(os.getenv("CLASSIFIER_MODELS_CONFIG"))
-    print(model_config['model_path'])
+    
     models = []
     for model_path in model_config['model_path']:
         # tokenizer
@@ -53,6 +54,8 @@ def load_classifiers():
             )
         model.eval()
         models.append(model)
+
+    logger.info("load_classifiers complete")
     return models, tokenizer
     
 
