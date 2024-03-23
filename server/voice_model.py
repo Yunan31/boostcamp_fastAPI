@@ -4,6 +4,7 @@ import time
 from dotenv import load_dotenv
 import os
 from transformers import WhisperForConditionalGeneration, WhisperProcessor, pipeline
+import pandas as pd
 
 load_dotenv()
 
@@ -35,7 +36,7 @@ def predict_whisper(pipe, audio_file):
     result = ""
     for pred in prediction:
         result += pred["text"] + " "
-    logger.info(f"Time taken: {time.time() - start}")
+    logger.info(f"STT Time taken: {time.time() - start}")
 
     # print the recognized text
     return result

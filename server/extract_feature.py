@@ -1,6 +1,7 @@
 import opensmile
 import pandas as pd
-from loguru import logger 
+from loguru import logger
+import time
 
 def load_opensmile():
     smile = opensmile.Smile(
@@ -11,7 +12,10 @@ def load_opensmile():
     return smile
 
 def extract_feature(smile, file_path):
-    audio_data = pd.DataFrame()
+    start_time = time.time()
+
     features = smile.process_file(file_path)
-    audio_data = pd.concat([audio_data, features])
+    audio_data = pd.DataFrame(features)
+    
+    logger.info(f"Feature extraction time taken: {time.time() - start_time}")
     return audio_data

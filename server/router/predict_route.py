@@ -2,7 +2,10 @@ from fastapi import APIRouter, Depends
 import os, sys, time
 from loguru import logger
 from models.metadata import Metadata
+from dotenv import load_dotenv
+import pandas as pd
 
+load_dotenv()
 sys.path.append(r'../')
 
 from server.voice_model import load_whisper_pipeline, predict_whisper
@@ -11,7 +14,7 @@ from server.extract_feature import load_opensmile, extract_feature
 
 predict_router = APIRouter()
 
-FILE_DIR = r'./data'
+DATA_DIR = os.getenv("DATA_DIR")
 
 stt_pipeline = None
 models = None
@@ -34,15 +37,54 @@ def get_opensmile():
 
 @predict_router.post("")
 async def predict(request: Metadata = Depends()):
+    # excution time check
+    start_time = time.time()
+
+    # get metadata
     metadata = request.model_dump()
     logger.info(metadata)
+
+    # make directory if id directory does not exist
+    file_dir = os.path.join(DATA_DIR, metadata['id'])
+    if not os.path.exists(file_dir):
+        os.makedirs(file_dir)
+        result_df = pd.DataFrame(columns=['question', 'prob'])
+        result_df.to_csv(os.path.join(file_dir, f"{metadata['id']}_result.csv"), index=False)
+
+    # save the audio file
     upload_file = metadata['audio_file']
     content = await upload_file.read()
-    audio_file = os.path.join(FILE_DIR, upload_file.filename)
+    audio_file = os.path.join(file_dir, upload_file.filename)
     with open(audio_file, "wb") as file:
         file.write(content)
 
+    # extract features from the audio file
+    audio_data = extract_feature(smile, audio_file)
+
+    # predict the STT result
     text = predict_whisper(stt_pipeline, audio_file)
 
-    # print the recognized text
-    return {text}
+    # save the processing dataframe
+    question = metadata['question']
+    meta_df = pd.DataFrame(metadata, columns=metadata.keys(), index=[0])
+    meta_df['audio_file'] = audio_file
+    meta_df['stt'] = text
+    audio_data['id'] = metadata['id']
+    data_path = os.path.join(file_dir, f"{metadata['id']}_{question}.csv")
+    
+    concat_df = meta_df.merge(audio_data, on='id')
+    concat_df.to_csv(data_path, index=False)
+
+    predict_df = concat_df.drop(columns=['id', 'audio_file', 'key', 'created_at'])
+
+    # predict the classification result
+    result = predict_classification(predict_df, models[question-1], tokenizer)
+
+    # save the result
+    result_df = pd.read_csv(os.path.join(file_dir, f"{metadata['id']}_result.csv"))
+    prediction = pd.DataFrame({'question': question, 'prob': result}, index=[0])
+    result_df = pd.concat([result_df, prediction])
+    result_df.to_csv(os.path.join(file_dir, f"{metadata['id']}_result.csv"), index=False)
+    
+    logger.info(f"Total Time taken: {time.time() - start_time}")
+    return {"prob": result}

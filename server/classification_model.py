@@ -10,10 +10,11 @@ from transformers.modeling_outputs import SequenceClassifierOutput
 from transformers import ElectraModel, ElectraConfig, ElectraForPreTraining, PreTrainedModel
 from transformers.models.electra.modeling_electra import ElectraPreTrainedModel
 from datasets import Dataset
-from loguru import logger
 
 from dotenv import load_dotenv
 import ast
+from loguru import logger
+import time
 
 load_dotenv()
 
@@ -38,7 +39,7 @@ def load_classifier():
 
 def load_classifiers():
     model_config = ast.literal_eval(os.getenv("CLASSIFIER_MODELS_CONFIG"))
-    
+
     models = []
     for model_path in model_config['model_path']:
         # tokenizer
@@ -75,10 +76,10 @@ def preprocessing_prompt(tokenizer, text, age, gender, q_num, max_len=512):
     return tokenizer(final_text, padding='max_length', truncation=True, return_tensors="pt", max_length=max_len, add_special_tokens=True)
 
 class TextDataset(Dataset):
-    def __init__(self, data_path, processing_type, tokenizer):
+    def __init__(self, predict_df, processing_type, tokenizer):
         self.tokenizer = tokenizer
-        self.dataset = pd.read_csv(data_path)
-        self.addi_feat_df = self.dataset.drop(columns=["age","gender","stt","target","question"])
+        self.dataset = predict_df
+        self.addi_feat_df = self.dataset.drop(columns=["age", "gender", "stt", "question"])
         self.inputs = []
 
         for idx in tqdm(range(len(self.dataset))):
@@ -139,10 +140,12 @@ class CustomModel(PreTrainedModel) :
         return torch.cat((x, addi_feat), dim=1)
 
 
-def predict_classification(data_path, model, tokenizer):
+def predict_classification(predict_df, model, tokenizer):
+    start_time = time.time()
+
     processing_type = os.getenv("PROCESSING_TYPE")
 
-    dataset = TextDataset(data_path, processing_type, tokenizer)
+    dataset = TextDataset(predict_df, processing_type, tokenizer)
 
     input_ids = torch.stack([dataset[0]["input_ids"]], dim=0)
     attention_mask = torch.stack([dataset[0]["attention_mask"]], dim=0)
@@ -153,5 +156,7 @@ def predict_classification(data_path, model, tokenizer):
         attention_mask = attention_mask,
         addi_feat = addi_feat,
     ).logits
+
+    logger.info(f"Classification time taken: {time.time() - start_time}")
 
     return logits[0][1].item()
