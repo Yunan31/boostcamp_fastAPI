@@ -1,6 +1,7 @@
-from fastapi import APIRouter, UploadFile
+from fastapi import APIRouter, Depends
 import os, sys, time
 from loguru import logger
+from models.metadata import Metadata
 
 sys.path.append(r'../')
 
@@ -19,7 +20,10 @@ def get_whisper_pipeline():
 
 
 @predict_router.post("")
-async def predict(upload_file: UploadFile):
+async def predict(request: Metadata = Depends()):
+    metadata = request.model_dump()
+    logger.info(metadata)
+    upload_file = metadata['audio_file']
     content = await upload_file.read()
     audio_file = os.path.join(FILE_DIR, upload_file.filename)
     with open(audio_file, "wb") as file:
