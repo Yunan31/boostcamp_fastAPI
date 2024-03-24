@@ -70,12 +70,18 @@ async def predict(request: Metadata = Depends()):
     meta_df['audio_file'] = audio_file
     meta_df['stt'] = text
     audio_data['id'] = metadata['id']
-    data_path = os.path.join(file_dir, f"{metadata['id']}_{question}.csv")
-    
-    concat_df = meta_df.merge(audio_data, on='id')
-    concat_df.to_csv(data_path, index=False)
 
-    predict_df = concat_df.drop(columns=['id', 'audio_file', 'key', 'created_at'])
+    data_path = os.path.join(file_dir, f"{metadata['id']}_predict.csv")
+    predict_df = meta_df.drop(columns=['key']).merge(audio_data, on='id')
+    if not os.path.exists(data_path):
+        concat_df = predict_df
+        concat_df.to_csv(data_path, index=False)
+    else:
+        concat_df = pd.read_csv(data_path)
+        concat_df = pd.concat([concat_df, predict_df])
+        concat_df.to_csv(data_path, index=False)
+
+    predict_df = predict_df.drop(columns=['id', 'audio_file', 'created_at'])
 
     # predict the classification result
     result = predict_classification(predict_df, models[question-1], tokenizer)
