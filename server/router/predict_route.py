@@ -11,6 +11,8 @@ sys.path.append(r'../')
 from server.voice_model import load_whisper_pipeline, predict_whisper
 from server.classification_model import load_classifiers, predict_classification
 from server.extract_feature import load_opensmile, extract_feature
+from server.utils.date import get_today
+from server.utils.local_storage import upload_file_to_s3, connect_s3
 
 predict_router = APIRouter()
 
@@ -20,6 +22,9 @@ stt_pipeline = None
 models = None
 tokenizer = None
 smile = None
+
+s3 = None
+BUCKET_NAME = None
 
 
 def get_whisper_pipeline():
@@ -33,6 +38,10 @@ def get_classifiers():
 def get_opensmile():
     global smile
     smile = load_opensmile()
+
+def get_connect_s3():
+    global s3, BUCKET_NAME
+    s3, BUCKET_NAME = connect_s3()
 
 
 @predict_router.post("")
@@ -57,6 +66,10 @@ async def predict(request: Metadata = Depends()):
     audio_file = os.path.join(file_dir, upload_file.filename)
     with open(audio_file, "wb") as file:
         file.write(content)
+    
+    # upload the audio file to S3
+    s3_path = f"audio/{get_today()}/{metadata['id']}/{metadata['id']}_{metadata['question']}.wav"
+    upload_file_to_s3(s3, BUCKET_NAME, audio_file, s3_path)
 
     # extract features from the audio file
     audio_data = extract_feature(smile, audio_file)
