@@ -6,6 +6,7 @@ from dotenv import load_dotenv
 import os
 
 from router.predict_route import predict_router, get_whisper_pipeline, get_classifiers, get_opensmile
+from utils.local_storage import connect_s3
 
 load_dotenv()
 
@@ -18,6 +19,8 @@ async def lifespan(app: FastAPI):
     logger.info("Classifiers loaded on startup")
     get_opensmile()
     logger.info("Opensmile loaded on startup")
+    connect_s3()
+    logger.info("S3 connected on startup")
     yield
 
 app = FastAPI(lifespan=lifespan)
