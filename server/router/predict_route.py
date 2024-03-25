@@ -13,6 +13,7 @@ from server.classification_model import load_classifiers, predict_classification
 from server.extract_feature import load_opensmile, extract_feature
 from server.utils.date import get_today
 from server.utils.local_storage import upload_file_to_s3, connect_s3
+from server.utils.preprocessing import preprocessing_record
 
 predict_router = APIRouter()
 
@@ -48,12 +49,19 @@ async def get_result(id: str, key: str):
     # # key check
     # if key != os.getenv("API_KEY"):
     #     raise HTTPException(status_code=401, detail="Invalid API Key")
+
+    # path check
+    if not os.path.exists(os.path.join(DATA_DIR, id)):
+        raise HTTPException(status_code=404, detail="ID not found")
     
     result_path = os.path.join(DATA_DIR, f"{id}/{id}_result.csv")
     predict_path = os.path.join(DATA_DIR, f"{id}/{id}_predict.csv")
 
     # load prediction result
     result_df = pd.read_csv(result_path)
+
+    # sort rows by question
+    result_df = result_df.sort_values(by='question')
 
     # upload the prediction and result to S3
     s3_path = f"data/{get_today()}/{id}/{id}_result.csv"
@@ -63,7 +71,7 @@ async def get_result(id: str, key: str):
 
     logger.info(f"{id} result returned")
 
-    return {"result": result_df.to_dict(orient='list')}
+    return {"result": result_df.to_dict(orient='records')}
 
 
 @predict_router.post("")
@@ -92,6 +100,9 @@ async def predict(request: Metadata = Depends()):
     audio_file = os.path.join(file_dir, upload_file.filename)
     with open(audio_file, "wb") as file:
         file.write(content)
+
+    # remove noise, trim silence the audio file
+    # audio_file = preprocessing_record(file_dir, upload_file.filename)
     
     # upload the audio file to S3
     s3_path = f"audio/{get_today()}/{metadata['id']}/{metadata['id']}_{metadata['question']}.wav"
@@ -106,7 +117,7 @@ async def predict(request: Metadata = Depends()):
     # save the processing dataframe
     question = metadata['question']
     meta_df = pd.DataFrame(metadata, columns=metadata.keys(), index=[0])
-    meta_df['audio_file'] = audio_file
+    meta_df['audio_file'] = os.path.join(os.getenv("S3_PATH"), s3_path)
     meta_df['stt'] = text
     audio_data['id'] = metadata['id']
 
@@ -117,6 +128,8 @@ async def predict(request: Metadata = Depends()):
         concat_df.to_csv(data_path, index=False)
     else:
         concat_df = pd.read_csv(data_path)
+        if metadata['question'] in concat_df['question'].values:
+            concat_df = concat_df[concat_df['question'] != metadata['question']]
         concat_df = pd.concat([concat_df, predict_df])
         concat_df.to_csv(data_path, index=False)
 
@@ -128,6 +141,8 @@ async def predict(request: Metadata = Depends()):
     # save the result
     result_df = pd.read_csv(os.path.join(file_dir, f"{metadata['id']}_result.csv"))
     prediction = pd.DataFrame({'question': question, 'prob': result}, index=[0])
+    if metadata['question'] in result_df['question'].values:
+        result_df = result_df[result_df['question'] != metadata['question']]
     result_df = pd.concat([result_df, prediction])
     result_df.to_csv(os.path.join(file_dir, f"{metadata['id']}_result.csv"), index=False)
     
