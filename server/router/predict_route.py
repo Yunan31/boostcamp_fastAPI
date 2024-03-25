@@ -46,9 +46,9 @@ def get_connect_s3():
 
 @predict_router.get("/{id}")
 async def get_result(id: str, key: str):
-    # # key check
-    # if key != os.getenv("API_KEY"):
-    #     raise HTTPException(status_code=401, detail="Invalid API Key")
+    # key check
+    if key != os.getenv("API_KEY"):
+        raise HTTPException(status_code=401, detail="Invalid API Key")
 
     # path check
     if not os.path.exists(os.path.join(DATA_DIR, id)):
@@ -83,9 +83,9 @@ async def predict(request: Metadata = Depends()):
     metadata = request.model_dump()
     logger.info(metadata)
 
-    # # key check
-    # if metadata["key"] != os.getenv("API_KEY"):
-    #     raise HTTPException(status_code=401, detail="Invalid API Key")
+    # key check
+    if metadata["key"] != os.getenv("API_KEY"):
+        raise HTTPException(status_code=401, detail="Invalid API Key")
 
     # make directory if id directory does not exist
     file_dir = os.path.join(DATA_DIR, metadata['id'])

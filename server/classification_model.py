@@ -82,7 +82,7 @@ class TextDataset(Dataset):
         self.addi_feat_df = self.dataset.drop(columns=["age", "gender", "stt", "question"])
         self.inputs = []
 
-        for idx in tqdm(range(len(self.dataset))):
+        for idx in range(len(self.dataset)):
 
             try :
                 if processing_type == "special_token":
