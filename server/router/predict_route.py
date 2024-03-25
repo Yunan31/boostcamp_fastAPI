@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 import os, sys, time
 from loguru import logger
 from models.metadata import Metadata
@@ -43,6 +43,28 @@ def get_connect_s3():
     global s3, BUCKET_NAME
     s3, BUCKET_NAME = connect_s3()
 
+@predict_router.get("/{id}")
+async def get_result(id: str, key: str):
+    # # key check
+    # if key != os.getenv("API_KEY"):
+    #     raise HTTPException(status_code=401, detail="Invalid API Key")
+    
+    result_path = os.path.join(DATA_DIR, f"{id}/{id}_result.csv")
+    predict_path = os.path.join(DATA_DIR, f"{id}/{id}_predict.csv")
+
+    # load prediction result
+    result_df = pd.read_csv(result_path)
+
+    # upload the prediction and result to S3
+    s3_path = f"data/{get_today()}/{id}/{id}_result.csv"
+    upload_file_to_s3(s3, BUCKET_NAME, result_path, s3_path)
+    s3_path = f"data/{get_today()}/{id}/{id}_predict.csv"
+    upload_file_to_s3(s3, BUCKET_NAME, predict_path, s3_path)
+
+    logger.info(f"{id} result returned")
+
+    return {"result": result_df.to_dict(orient='list')}
+
 
 @predict_router.post("")
 async def predict(request: Metadata = Depends()):
@@ -52,6 +74,10 @@ async def predict(request: Metadata = Depends()):
     # get metadata
     metadata = request.model_dump()
     logger.info(metadata)
+
+    # # key check
+    # if metadata["key"] != os.getenv("API_KEY"):
+    #     raise HTTPException(status_code=401, detail="Invalid API Key")
 
     # make directory if id directory does not exist
     file_dir = os.path.join(DATA_DIR, metadata['id'])
