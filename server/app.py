@@ -9,6 +9,8 @@ from router.predict_route import predict_router, get_whisper_pipeline, get_class
 from utils.date import get_today
 from utils.custom_logging import CustomizeLogger
 
+from starlette.middleware.cors import CORSMiddleware
+
 load_dotenv()
 
 
@@ -28,6 +30,16 @@ async def lifespan(app: FastAPI):
 app = FastAPI(lifespan=lifespan)
 
 app.include_router(predict_router, tags=["Predict"], prefix="/predict")
+
+# CORS
+origins = ["*"]
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 
 @app.get("/")
