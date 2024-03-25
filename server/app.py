@@ -6,12 +6,15 @@ from dotenv import load_dotenv
 import os
 
 from router.predict_route import predict_router, get_whisper_pipeline, get_classifiers, get_opensmile, get_connect_s3
+from utils.date import get_today
+from utils.custom_logging import CustomizeLogger
 
 load_dotenv()
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    app.logger = CustomizeLogger.make_logger()
     get_whisper_pipeline()
     logger.info("Pipeline loaded on startup")
     get_classifiers()
